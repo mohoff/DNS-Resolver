@@ -6,47 +6,19 @@ import (
 	"net/http"
 )
 
+// Webserver struct holds basic parameters in order to work as DNS Resolver
 type Webserver struct {
 	Port     int
 	Config   *Config
 	Resolver *Resolver
-	// Address to listen on, ":dns" if empty.
-	//Addr string
-	// if "tcp" it will invoke a TCP listener, otherwise an UDP one.
-	//Net string
-	// TCP Listener to use, this is to aid in systemd's socket activation.
-	//Listener net.Listener
-	// UDP "Listener" to use, this is to aid in systemd's socket activation.
-	//PacketConn net.PacketConn
-	// Handler to invoke, dns.DefaultServeMux if nil.
-	//Handler Handler
-	//Server *http.Server
-	// ...
 }
 
-/*type DNSHandler struct{}
-
-func (*DNSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	url := getDomainName(r)
-
-}*/
-
-func getDomainName(r *http.Request) string {
-	return r.URL.RawQuery
-}
-
+// NewWebserver takes a *Config and returns an initialized Webserver struct
 func NewWebserver(c *Config) *Webserver {
 	return &Webserver{
 		c.port,
 		c,
 		NewResolver(c),
-		/*&http.Server{
-			Addr:    c.GetPortString(),
-			Handler: &DNSHandler{},
-			//ReadTimeout:    10 * time.Second,
-			//WriteTimeout:   10 * time.Second,
-			//MaxHeaderBytes: 1 << 20,
-		},*/
 	}
 }
 
@@ -62,7 +34,7 @@ func (w *Webserver) startWebserver() {
 }
 
 // ServeHTTP implements http.Handler interface.
-// Gets called when client requests page for s.config.ServingPath
+// Is called when client requests page for s.config.ServingPath
 func (w *Webserver) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 	log.Println("Request received.")
 
@@ -77,13 +49,13 @@ func (w *Webserver) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 		fmt.Errorf("Resolve failed")
 	}
 
-	//byteResponse := []byte(response)
-
 	// set correct MIME-type in response to match JSON data
 	wr.Header().Set("Content-Type", w.Config.MIMEType)
 
-	// send response
-	//wr.Write(byteResponse)
-
 	log.Println("Response sent.\n-----")
+}
+
+// getDomainName is a helper function to extract the domain name from *http.Request
+func getDomainName(r *http.Request) string {
+	return r.URL.RawQuery
 }

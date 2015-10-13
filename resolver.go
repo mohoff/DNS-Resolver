@@ -1,20 +1,19 @@
 package main
 
 import (
-	_ "encoding/json"
 	"errors"
-	_ "fmt"
-	"github.com/miekg/dns"
 	"log"
-	_ "net"
-	_ "reflect"
 	"strings"
+
+	"github.com/miekg/dns"
 )
 
 var (
 	DNSPORT = "53"
 )
 
+// Resolver struct holds essential parameters which are used in the context
+// of github.com/miekg/dns
 type Resolver struct {
 	dnsServers  []string
 	rrTypes     []string
@@ -24,6 +23,7 @@ type Resolver struct {
 	Result      *Result
 }
 
+// NewResolver returns an initialized Resolver struct.
 func NewResolver(config *Config) *Resolver {
 	msg := &dns.Msg{}
 	msg.Id = dns.Id()
@@ -46,6 +46,7 @@ func NewResolver(config *Config) *Resolver {
 	}
 }
 
+// Use DNS extension EDNS which can be used for DNS over UDP
 func handleEDNS(msg *dns.Msg) *dns.Msg {
 	opt := &dns.OPT{
 		Hdr: dns.RR_Header{
@@ -58,6 +59,7 @@ func handleEDNS(msg *dns.Msg) *dns.Msg {
 	return msg
 }
 
+// Resolve queries every DNS-server with every specififed RR-type
 func (r *Resolver) Resolve(domainname string) (*Result, error) {
 	result := &Result{
 		input: domainname,
@@ -77,6 +79,7 @@ func (r *Resolver) Resolve(domainname string) (*Result, error) {
 	return r.Result, nil
 }
 
+// Uses github.com/miekg/dns package, in order to invoke one query.
 func (r *Resolver) queryDNSServer(dnsServer, domainname, rrType string, edns bool) (*dns.Msg, error) {
 	fqdn := dns.Fqdn(domainname)
 	r.dnsQueryMsg.Id = dns.Id()
@@ -90,7 +93,7 @@ func (r *Resolver) queryDNSServer(dnsServer, domainname, rrType string, edns boo
 
 	if r.dnsQueryMsg.Id != dnsResponseMsg.Id {
 		log.Printf("DNS msgID mismatch: Request-ID(%d), Response-ID(%d)", r.dnsQueryMsg.Id, dnsResponseMsg.Id)
-		return nil, errors.New("DNS Msg-ID mismatch.")
+		return nil, errors.New("DNS Msg-ID mismatch")
 	}
 
 	if dnsResponseMsg.MsgHdr.Truncated {
@@ -106,11 +109,14 @@ func (r *Resolver) queryDNSServer(dnsServer, domainname, rrType string, edns boo
 	return dnsResponseMsg, nil
 }
 
+// Result struct contains a map which stores DNS-responses.
 type Result struct {
 	input string
 	res   map[interface{}][]string
 }
 
+// Adds DNS responses to a map. Most common RR-types are applied to retrieve
+// proper information.
 func (r *Result) addMsg(msg *dns.Msg) {
 	if r.res == nil {
 		r.res = make(map[interface{}][]string)
@@ -121,7 +127,6 @@ func (r *Result) addMsg(msg *dns.Msg) {
 		log.Println("Record:", record)
 		switch rrType := rr.(type) {
 		case *dns.A:
-			//results[rrType] = rr.String()
 			r.res[rrType] = append(r.res[rrType], rr.(*dns.A).A.String())
 		case *dns.AAAA:
 			r.res[rrType] = append(r.res[rrType], rr.(*dns.AAAA).AAAA.String())
